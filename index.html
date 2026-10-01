@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ハスキーズ空きコマ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: one narrow column — current free members on top, weekly table below; separation by whitespace and thin rules only */
+:root {
+  --bg: #f7f8f9;
+  --ink: #1a2129;
+  --muted: #6a7480;
+  --line: #d9dee3;
+  --accent: #1f6fc4;
+  --free: #17804f;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --font-num: "Barlow Condensed", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12171d; --ink: #e6ebf0; --muted: #8f9aa6; --line: #2c353f; --accent: #6fb0f2; --free: #4fcf90;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12171d; --ink: #e6ebf0; --muted: #8f9aa6; --line: #2c353f; --accent: #6fb0f2; --free: #4fcf90;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  margin: 0;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 56px; display: grid; gap: 48px; }
+
+header.top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: .95rem; letter-spacing: .06em; }
+.clock { font-family: var(--font-num); font-weight: 500; font-size: 1.05rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* current */
+.board { display: grid; gap: 20px; }
+.slot { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: .9rem; }
+.slot b { color: var(--ink); font-size: 1.05rem; }
+.slot .t { font-family: var(--font-num); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+h1 { font-size: clamp(1.7rem, 6.5vw, 2.4rem); font-weight: 700; line-height: 1.25; margin: 0; text-wrap: balance; }
+.names { display: flex; flex-wrap: wrap; column-gap: 28px; row-gap: 6px; }
+.name { font-size: clamp(1.5rem, 6vw, 2rem); font-weight: 700; color: var(--free); }
+.empty { font-size: 1.05rem; color: var(--muted); }
+.note { font-size: .88rem; color: var(--muted); }
+.next { border-top: 1px solid var(--line); padding-top: 20px; display: grid; gap: 8px; }
+.next h2 { font-size: .9rem; font-weight: 500; margin: 0; color: var(--muted); }
+.next .names { column-gap: 20px; }
+.next .name { font-size: 1.15rem; }
+.back { justify-self: start; font: inherit; font-size: .9rem; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.back:focus-visible, .cell:focus-visible, .who button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* week */
+section.week { display: grid; gap: 16px; }
+section.week h2 { font-size: 1rem; margin: 0; font-weight: 700; }
+.who { display: flex; flex-wrap: wrap; column-gap: 18px; row-gap: 4px; font-size: .9rem; }
+.who span { color: var(--muted); }
+.who button {
+  font: inherit; cursor: pointer; padding: 2px 0; border: 0; background: none; color: var(--ink);
+  border-bottom: 2px solid transparent;
+}
+.who button[aria-pressed="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+.gridwrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 460px; table-layout: fixed; }
+th { font-size: .82rem; font-weight: 500; color: var(--muted); padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--ink); }
+th.today { color: var(--accent); font-weight: 700; }
+th.row { width: 52px; border-bottom: 1px solid var(--line); vertical-align: top; font-family: var(--font-num); font-variant-numeric: tabular-nums; line-height: 1.2; }
+th.row b { display: block; font-size: 1.1rem; color: var(--ink); font-weight: 600; }
+.cell { vertical-align: top; padding: 8px; border-bottom: 1px solid var(--line); cursor: pointer; font-size: .8rem; line-height: 1.5; }
+.cell .n { display: block; color: var(--free); font-weight: 500; }
+.cell .cnt { display: block; font-family: var(--font-num); font-size: .9rem; color: var(--muted); }
+.cell.now .cnt, .cell.sel .cnt { color: var(--accent); font-weight: 600; }
+.cell.now .cnt::after { content: " いま"; font-family: var(--font-body); font-size: .75rem; }
+.cell.sel .cnt::after { content: " 表示中"; font-family: var(--font-body); font-size: .75rem; }
+.cell.dim .n { color: var(--muted); opacity: .45; }
+.cell.dim .n.hit { color: var(--free); opacity: 1; font-weight: 700; }
+.legend { font-size: .82rem; color: var(--muted); }
+footer { font-size: .8rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">ハスキーズ 空きコマ</div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <main class="board" id="board" aria-live="polite"></main>
+
+  <section class="week">
+    <h2>曜日・時限ごとの空きコマ</h2>
+    <div class="who" id="who" role="group" aria-label="メンバーで絞り込む"></div>
+    <div class="gridwrap"><table id="grid"></table></div>
+    <div class="legend">マスを押すと、そのコマで空いている人を上に表示します。名前を押すと、その人の空きコマを強調します。</div>
+  </section>
+
+  <footer>2026年後期の時間割をもとに表示しています。授業が1つもない日（全休）は空きコマに含めません。時刻は日本時間です。</footer>
+</div>
+
+<script>
+const PERIODS = [
+  { p: 1, s: "09:25", e: "10:55" },
+  { p: 2, s: "11:10", e: "12:40" },
+  { p: 3, s: "13:00", e: "14:30" },
+  { p: 4, s: "14:45", e: "16:15" },
+  { p: 5, s: "16:30", e: "18:00" },
+  { p: 6, s: "18:10", e: "19:40" },
+];
+const DAYS = ["月", "火", "水", "木", "金"];
+
+// 授業が入っているコマ（曜日ごと: 月,火,水,木,金）
+const MEMBERS = [
+  { name: "ごろう",     cls: [[1,3,4], [2,5],     [2,3,5],   [2,5],     [1,2,4,5]] },
+  { name: "ゆうた",     cls: [[],      [],        [1,3,4,5], [2,4,5],   []] },
+  { name: "りんか",     cls: [[4],     [2,3,4],   [1,3],     [1,2,3],   [3,4]] },
+  { name: "りん",       cls: [[4],     [2,3,4],   [2,4,5],   [2,4],     [2,4]] },
+  { name: "こうたろう", cls: [[3,4,5], [1,2,4,5], [2,3],     [2,4],     [1,2,3,4]] },
+  { name: "はるき",     cls: [[3,4],   [1,2,3,4], [],        [2,3,5,6], [2]] },
+  { name: "りりあ",     cls: [[2,4,5], [1,2,3],   [2],       [2,3],     [1,2,3]] },
+];
+
+const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+const isFree = (m, d, p) => m.cls[d].length > 0 && !m.cls[d].includes(p);
+const freeAt = (d, p) => MEMBERS.filter(m => isFree(m, d, p)).map(m => m.name);
+const offOn = d => MEMBERS.filter(m => m.cls[d].length === 0).map(m => m.name);
+
+function nowJST() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    month: "numeric", day: "numeric",
+  }).formatToParts(new Date());
+  const get = k => parts.find(x => x.type === k).value;
+  const wd = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 }[get("weekday")];
+  return { day: wd, min: Number(get("hour")) * 60 + Number(get("minute")),
+           hh: get("hour"), mm: get("minute"), month: get("month"), date: get("day") };
+}
+
+// 現在のコマ / 次のコマを求める（土日は授業なし）
+function locate(now) {
+  if (now.day <= 4) {
+    for (const pr of PERIODS) {
+      if (now.min >= toMin(pr.s) && now.min < toMin(pr.e)) return { mode: "in", day: now.day, period: pr };
+    }
+    const next = PERIODS.find(pr => toMin(pr.s) > now.min);
+    if (next) return { mode: "break", day: now.day, period: next };
+  }
+  const nd = now.day >= 4 ? 0 : now.day + 1;
+  return { mode: "off", day: nd, period: PERIODS[0] };
+}
+
+let picked = null;    // {day, p} when a table cell is selected
+let focusName = null; // member filter
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const list = names => `<div class="names">${names.map(n => `<span class="name">${esc(n)}</span>`).join("")}</div>`;
+const slotHead = (day, pr, label) =>
+  `<div class="slot"><span>${label}</span><b>${DAYS[day]}曜 ${pr.p}限</b><span class="t">${pr.s}–${pr.e}</span></div>`;
+
+function renderBoard(now) {
+  const board = document.getElementById("board");
+  let html = "";
+
+  if (picked) {
+    const pr = PERIODS[picked.p - 1];
+    const names = freeAt(picked.day, picked.p);
+    html += slotHead(picked.day, pr, "選択中");
+    html += `<h1>このコマで空いている人</h1>`;
+    html += names.length ? list(names) : `<div class="empty">全員授業があります</div>`;
+    const off = offOn(picked.day);
+    if (off.length) html += `<div class="note">${DAYS[picked.day]}曜が全休: ${off.map(esc).join("、")}</div>`;
+    html += `<button class="back" id="back" type="button">現在の表示に戻る</button>`;
+    board.innerHTML = html;
+    document.getElementById("back").onclick = () => { picked = null; render(); };
+    return;
+  }
+
+  const loc = locate(now);
+  const pr = loc.period;
+
+  if (loc.mode === "in") {
+    html += slotHead(loc.day, pr, "現在");
+    html += `<h1>いま空いているひと</h1>`;
+    const names = freeAt(loc.day, pr.p);
+    html += names.length ? list(names) : `<div class="empty">全員授業中です</div>`;
+  } else if (loc.mode === "break") {
+    html += slotHead(loc.day, pr, "休み時間・次は");
+    html += `<h1>いま空いているひと</h1>`;
+    html += `<div class="note">休み時間のため、次の${pr.p}限で空いている人を表示しています。</div>`;
+    const names = freeAt(loc.day, pr.p);
+    html += names.length ? list(names) : `<div class="empty">${pr.p}限は全員授業があります</div>`;
+  } else {
+    html += `<h1>いま空いているひと</h1>`;
+    html += `<div class="empty">授業時間外です</div>`;
+  }
+
+  if (loc.mode !== "off") {
+    const off = offOn(now.day);
+    if (off.length) html += `<div class="note">今日が全休: ${off.map(esc).join("、")}</div>`;
+  }
+
+  let nxt = null, label = "";
+  if (loc.mode === "in" && pr.p < 6) {
+    nxt = { day: loc.day, period: PERIODS[pr.p] };
+    label = `次の${nxt.period.p}限（${nxt.period.s}〜）で空いている人`;
+  }
+  if (loc.mode === "off") {
+    nxt = { day: loc.day, period: PERIODS[0] };
+    label = `次の授業日 ${DAYS[loc.day]}曜1限（${PERIODS[0].s}〜）で空いている人`;
+  }
+  if (nxt) {
+    const n2 = freeAt(nxt.day, nxt.period.p);
+    html += `<div class="next"><h2>${label}</h2>${n2.length ? list(n2) : `<div class="note">全員授業があります</div>`}</div>`;
+  }
+  board.innerHTML = html;
+}
+
+function renderGrid(now) {
+  const loc = locate(now);
+  const live = loc.mode === "in" ? { day: loc.day, p: loc.period.p } : null;
+  let html = `<thead><tr><th class="row"></th>${DAYS.map((d, i) => `<th class="${i === now.day ? "today" : ""}">${d}</th>`).join("")}</tr></thead><tbody>`;
+  for (const pr of PERIODS) {
+    html += `<tr><th class="row"><b>${pr.p}</b>${pr.s}</th>`;
+    DAYS.forEach((_, d) => {
+      const names = freeAt(d, pr.p);
+      const cls = ["cell"];
+      if (live && live.day === d && live.p === pr.p) cls.push("now");
+      if (picked && picked.day === d && picked.p === pr.p) cls.push("sel");
+      if (focusName) cls.push("dim");
+      const body = names.map(n => `<span class="n${n === focusName ? " hit" : ""}">${esc(n)}</span>`).join("");
+      html += `<td class="${cls.join(" ")}" tabindex="0" role="button" data-d="${d}" data-p="${pr.p}"
+        aria-label="${DAYS[d]}曜${pr.p}限 空き${names.length}人"><span class="cnt">${names.length}人</span>${body}</td>`;
+    });
+    html += `</tr>`;
+  }
+  html += `</tbody>`;
+  const grid = document.getElementById("grid");
+  grid.innerHTML = html;
+  grid.querySelectorAll(".cell").forEach(td => {
+    const pick = () => {
+      picked = { day: Number(td.dataset.d), p: Number(td.dataset.p) };
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    td.onclick = pick;
+    td.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } };
+  });
+}
+
+function renderWho() {
+  const who = document.getElementById("who");
+  who.innerHTML = `<span>強調:</span>` + MEMBERS.map(m =>
+    `<button type="button" aria-pressed="${focusName === m.name}" data-n="${esc(m.name)}">${esc(m.name)}</button>`).join("");
+  who.querySelectorAll("button").forEach(b => b.onclick = () => {
+    focusName = focusName === b.dataset.n ? null : b.dataset.n;
+    render();
+  });
+}
+
+let lastKey = "";
+const keyOf = (now, loc) => [loc.mode, loc.day, loc.period.p, now.day].join("-");
+
+function render() {
+  const now = nowJST();
+  lastKey = keyOf(now, locate(now));
+  renderBoard(now);
+  renderGrid(now);
+  renderWho();
+}
+
+// 時計は毎回更新し、コマが切り替わったときだけ表示を描き直す
+function tick() {
+  const now = nowJST();
+  const wdj = ["月", "火", "水", "木", "金", "土", "日"][now.day];
+  document.getElementById("clock").textContent = `${now.month}/${now.date}（${wdj}） ${now.hh}:${now.mm}`;
+  if (keyOf(now, locate(now)) !== lastKey) render();
+}
+
+render();
+tick();
+setInterval(tick, 20 * 1000);
+</script>
+</body>
+</html>
